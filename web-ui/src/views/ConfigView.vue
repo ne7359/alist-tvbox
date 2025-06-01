@@ -197,6 +197,9 @@
           <el-button type="primary" @click="currentUserAgent">当前UA</el-button>
           <el-button type="primary" @click="randomUserAgent">随机UA</el-button>
         </el-form-item>
+        <el-form-item label="AList管理密码" v-if="!store.xiaoya">
+          <el-input v-model="atvPass" style="width: 160px" type="password" show-password/>
+        </el-form-item>
         <el-form-item label="Cookie地址">
           <a :href="currentUrl + '/ali/token/' + aliSecret" target="_blank">
             阿里 Token
@@ -267,6 +270,15 @@
               @change="updateAliLazyLoad"
             />
           </el-form-item>
+          <el-form-item label="自动清理失效资源">
+            <el-switch
+              v-model="cleanInvalidShares"
+              inline-prompt
+              active-text="开启"
+              inactive-text="关闭"
+              @change="updateCleanInvalidShares"
+            />
+          </el-form-item>
           <el-form-item label="网盘帐号负载均衡">
             <el-switch
               v-model="driverRoundRobin"
@@ -277,31 +289,38 @@
             />
           </el-form-item>
         </div>
-
-        <el-form-item label="开启阿里快传115">
-          <el-switch
-            v-model="aliTo115"
-            inline-prompt
-            active-text="开启"
-            inactive-text="关闭"
-            @change="updateAliTo115"
-          />
-          <span class="hint">帐号页面添加115网盘</span>
-          <el-form-item label="115删除码">
-            <el-input v-model="deleteCode115" type="password" show-password/>
+        <div class="el-row">
+          <el-form-item label="开启阿里快传115">
+            <el-switch
+              v-model="aliTo115"
+              inline-prompt
+              active-text="开启"
+              inactive-text="关闭"
+              @change="updateAliTo115"
+            />
+            <span class="hint">帐号页面添加115网盘</span>
+          </el-form-item>
+          <el-form-item label-width="180px" label="115删除码">
+            <el-input v-model="deleteCode115" style="width: 150px" type="password" show-password/>
+            <span class="hint"></span>
             <el-button type="primary" @click="updateDeleteCode115">更新</el-button>
           </el-form-item>
-        </el-form-item>
-        <el-form-item label="AList管理密码" v-if="!store.xiaoya">
-          <el-input v-model="atvPass" type="password" show-password/>
-        </el-form-item>
-        <el-form-item label="网盘文件删除延时">
-          <el-input-number v-model="deleteDelayTime" min="0"></el-input-number>
-          &nbsp;&nbsp;秒
-          <span class="hint">0表示不删除</span>
-          <span class="hint"></span>
-          <el-button type="primary" @click="updateDeleteDelayTime">更新</el-button>
-        </el-form-item>
+        </div>
+        <div class="el-row">
+          <el-form-item label="网盘文件删除延时">
+            <el-input-number v-model="deleteDelayTime" min="0"></el-input-number>
+            &nbsp;&nbsp;秒
+            <span class="hint">0表示不删除</span>
+            <span class="hint"></span>
+            <el-button type="primary" @click="updateDeleteDelayTime">更新</el-button>
+          </el-form-item>
+          <el-form-item label="临时分享过期时间">
+            <el-input-number v-model="tempShareExpiration" min="1"></el-input-number>
+            &nbsp;&nbsp;小时
+            <span class="hint"></span>
+            <el-button type="primary" @click="updateTempShareExpiration">更新</el-button>
+          </el-form-item>
+        </div>
         <el-form-item>
           <el-button @click="resetAListToken">重置AList认证Token</el-button>
           <el-button @click="exportDatabase">导出数据库</el-button>
@@ -375,6 +394,7 @@ const aListDebug = ref(false)
 const aliTo115 = ref(false)
 const driverRoundRobin = ref(false)
 const aliLazyLoad = ref(false)
+const cleanInvalidShares = ref(false)
 const enableHttps = ref(false)
 const autoCheckin = ref(false)
 const dialogVisible = ref(false)
@@ -388,6 +408,7 @@ const movieVersion = ref(0)
 const movieRemoteVersion = ref(0)
 const cachedMovieVersion = ref(0)
 const deleteDelayTime = ref(900)
+const tempShareExpiration = ref(24)
 const aListStartTime = ref('')
 const openTokenUrl = ref('')
 const dockerAddress = ref('')
@@ -475,6 +496,12 @@ const updateDeleteDelayTime = () => {
   })
 }
 
+const updateTempShareExpiration = () => {
+  axios.post('/api/settings', {name: 'temp_share_expiration', value: tempShareExpiration.value}).then(() => {
+    ElMessage.success('更新成功')
+  })
+}
+
 const updateMixed = () => {
   axios.post('/api/settings', {name: 'mix_site_source', value: mixSiteSource.value}).then(() => {
     ElMessage.success('更新成功')
@@ -529,6 +556,12 @@ const updateAliLazyLoad = () => {
   })
 }
 
+const updateCleanInvalidShares = () => {
+  axios.post('/api/settings', {name: 'clean_invalid_shares', value: cleanInvalidShares.value}).then(() => {
+    ElMessage.success('更新成功，重启生效')
+  })
+}
+
 const updateLogin = () => {
   axios.post('/api/alist/login', login.value).then(({data}) => {
     ElMessage.success('保存成功')
@@ -574,7 +607,8 @@ onMounted(() => {
     form.value.enabledToken = !!data.token
     scheduleTime.value = data.schedule_time || new Date(2023, 6, 20, 9, 0)
     aListStartTime.value = data.alist_start_time
-    deleteDelayTime.value = +data.delete_delay_time
+    deleteDelayTime.value = +data.delete_delay_time || 900
+    tempShareExpiration.value = +data.temp_share_expiration || 24
     movieVersion.value = data.movie_version
     indexVersion.value = data.index_version
     dockerVersion.value = data.docker_version
@@ -592,6 +626,7 @@ onMounted(() => {
     aListDebug.value = data.alist_debug === 'true'
     aliTo115.value = data.ali_to_115 === 'true'
     driverRoundRobin.value = data.driver_round_robin === 'true'
+    cleanInvalidShares.value = data.clean_invalid_shares === 'true'
     aliLazyLoad.value = data.ali_lazy_load !== 'false'
     mixSiteSource.value = data.mix_site_source !== 'false'
     atvPass.value = data.atv_password

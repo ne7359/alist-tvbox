@@ -6,6 +6,7 @@ import cn.har01d.alist_tvbox.dto.SharesDto;
 import cn.har01d.alist_tvbox.entity.Share;
 import cn.har01d.alist_tvbox.model.Response;
 import cn.har01d.alist_tvbox.service.ShareService;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -78,8 +79,18 @@ public class ShareController {
     }
 
     @GetMapping("/api/storages")
-    public Object listStorages(Pageable pageable) {
+    public JsonNode listStorages(Pageable pageable) {
         return shareService.listStorages(pageable);
+    }
+
+    @PostMapping("/api/storages")
+    public void validateStorages() {
+        shareService.validateStorages();
+    }
+
+    @DeleteMapping("/api/storages")
+    public int cleanStorages() {
+        return shareService.cleanStorages();
     }
 
     @PostMapping("/api/storages/{id}")

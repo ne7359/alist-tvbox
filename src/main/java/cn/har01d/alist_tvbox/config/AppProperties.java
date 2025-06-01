@@ -20,6 +20,7 @@ public class AppProperties {
     private boolean replaceAliToken;
     private boolean searchable;
     private boolean enableHttps;
+    private boolean cleanInvalidShares;
     private int pageSize = 100;
     private int maxSearchResult = 60;
     private String secretKey;
@@ -29,6 +30,7 @@ public class AppProperties {
     private String tgWebChannels = Constants.TG_WEB_CHANNELS;
     private String tgSearch;
     private int tgTimeout = 5000;
+    private int tempShareExpiration = 24;
     private Set<String> formats;
     private Set<String> subtitles;
     private List<Site> sites;
